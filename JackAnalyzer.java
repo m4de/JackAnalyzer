@@ -1,3 +1,12 @@
+import java.io.File;
+import java.io.FileWriter;
+import java.io.FilenameFilter;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
 /**
  * This is the main program that drives the overall syntax analysis process, using the services of a
  * <code>JackTokenizer</code> and a <code>CompilationEngine</code>. For each source <i>Xxx</i><code>.jack</code> file,
@@ -12,7 +21,25 @@
  */
 class JackAnalyzer {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        List<File> files = new ArrayList<>();
 
+        File in = new File(args[0]);
+        if (in.isFile()) {
+            files.add(in.getAbsoluteFile());
+        } else {
+            FilenameFilter filter = (dir, name) -> name.matches(".*.jack");
+            files.addAll(Arrays.asList(Objects.requireNonNull(in.listFiles(filter))));
+        }
+
+        for (File f : files) {
+            PrintWriter pw = new PrintWriter(new FileWriter(f.getAbsolutePath().replaceFirst("[.][^.]+$", "T.xml")));
+            JackTokenizer jt = new JackTokenizer(f);
+            while (jt.hasMoreLines()) {
+                jt.advance();
+                pw.println(jt.line);
+            }
+            pw.close();
+        }
     }
 }
