@@ -35,9 +35,9 @@ class JackAnalyzer {
         for (File f : files) {
             PrintWriter pw = new PrintWriter(new FileWriter(f.getAbsolutePath().replaceFirst("[.][^.]+$", "T.xml")));
             JackTokenizer jt = new JackTokenizer(f);
-            while (jt.hasMoreLines()) {
+            while (jt.hasMoreTokens()) {
                 jt.advance();
-                pw.println(jt.line);
+                pw.println(jt.token);
             }
             pw.close();
         }

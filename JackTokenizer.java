@@ -10,7 +10,7 @@ import java.util.Scanner;
 class JackTokenizer {
 
     private final Scanner sc;
-    String line;
+    String token;
 
     /**
      * Ignores all comments and white space in the input stream, and serializes it into Jack-language tokens.
@@ -24,22 +24,24 @@ class JackTokenizer {
     }
 
     /**
-     * Are there more lines in the input?
+     * Are there more tokens in the input?
      *
      * @return boolean
      */
-    boolean hasMoreLines() {
-        return sc.hasNextLine();
+    boolean hasMoreTokens() {
+        return sc.hasNext();
     }
 
     /**
-     * Gets the next line from the input, and makes it the current line.
-     * This method should be called only if {@link #hasMoreLines() hasMoreLines} is true.
-     * Initially there is no current line.
+     * Gets the next token from the input, and makes it the current token.
+     * This method should be called only if {@link #hasMoreTokens() hasMoreTokens} is true.
+     * Initially there is no current token.
      */
     void advance() {
-        do {
-            line = sc.nextLine().replaceFirst("//.+", "").trim();
-        } while (line.startsWith("/**") || line.startsWith("/*") || line.startsWith("//") || line.equals(""));
+        token = sc.next();
+        while (token.equals("//") | token.equals("/**")) {
+            sc.nextLine();
+            token = sc.next();
+        }
     }
 }
