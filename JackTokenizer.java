@@ -14,6 +14,12 @@ class JackTokenizer {
     String token;
     String nextToken = "";
 
+    private final String keyword = "class|constructor|function|method|field|static|var|int|char|boolean|void|true|false|null|this|let|do|if|else|while|return";
+    private final String symbol = "\\{|}|\\(|\\)|\\[|]|\\.|,|;|\\+|-|\\*|/|&|\\||<|>|=|~";
+    private final String integerConstant = "^(0|[1-9]\\d*)$";
+    private final String stringConstant = "\".*?\"";
+    private final String identifier = "[a-zA-Z_][a-zA-Z0-9_]*";
+
     /**
      * Ignores all comments and white space in the input stream, and serializes it into Jack-language tokens.
      * The token types are specified according to the Jack grammar.
@@ -100,5 +106,20 @@ class JackTokenizer {
                 this.token = token;
             }
         }
+    }
+
+    /**
+     * Returns the type of the current token, as a constant.
+     *
+     * @return  the type of the current token
+     * @see     TokenType
+     */
+    TokenType tokenType() {
+        if (Pattern.matches(keyword, token)) return TokenType.KEYWORD;
+        if (Pattern.matches(symbol, token)) return TokenType.SYMBOL;
+        if (Pattern.matches(integerConstant, token)) return TokenType.INT_CONST;
+        if (Pattern.matches(stringConstant, token)) return TokenType.STRING_CONST;
+        if (Pattern.matches(identifier, token)) return TokenType.IDENTIFIER;
+        return null;
     }
 }
