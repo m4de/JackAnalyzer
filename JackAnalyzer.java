@@ -37,7 +37,11 @@ class JackAnalyzer {
             JackTokenizer jt = new JackTokenizer(f);
             while (jt.hasMoreTokens()) {
                 jt.advance();
+                if (jt.token.isEmpty()) {
+                    jt.advance();
+                }
                 pw.println(jt.token);
+
             }
             pw.close();
         }
