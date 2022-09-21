@@ -122,4 +122,38 @@ class JackTokenizer {
         if (Pattern.matches(identifier, token)) return TokenType.IDENTIFIER;
         return null;
     }
+
+    /**
+     * Returns the keyword which is the current token, as a constant.
+     * This method should be called only if {@link #tokenType() tokenType} is {@link TokenType#KEYWORD KEYWORD}.
+     *
+     * @return  the keyword which is the current token
+     * @see     Keyword
+     */
+    Keyword keyWord() {
+        switch (token) {
+            case "class": return Keyword.CLASS;
+            case "method": return Keyword.METHOD;
+            case "function": return Keyword.FUNCTION;
+            case "constructor": return Keyword.CONSTRUCTOR;
+            case "int": return Keyword.INT;
+            case "boolean": return Keyword.BOOLEAN;
+            case "char": return Keyword.CHAR;
+            case "void": return Keyword.VOID;
+            case "var": return Keyword.VAR;
+            case "static": return Keyword.STATIC;
+            case "field": return Keyword.FIELD;
+            case "let": return Keyword.LET;
+            case "do": return Keyword.DO;
+            case "if": return Keyword.IF;
+            case "else": return Keyword.ELSE;
+            case "while": return Keyword.WHILE;
+            case "return": return Keyword.RETURN;
+            case "true": return Keyword.TRUE;
+            case "false": return Keyword.FALSE;
+            case "null": return Keyword.NULL;
+            case "this": return Keyword.THIS;
+        }
+        return null;
+    }
 }

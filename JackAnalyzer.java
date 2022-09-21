@@ -40,8 +40,12 @@ class JackAnalyzer {
                 if (jt.token.isEmpty()) {
                     jt.advance();
                 }
-                pw.println(jt.token);
-
+                switch (jt.tokenType()) {
+                    case KEYWORD:
+                        pw.println("<keyword> " + jt.keyWord().toString().toLowerCase() + " </keyword>");
+                        break;
+                    default: pw.println(jt.token);
+                }
             }
             pw.close();
         }
