@@ -44,6 +44,17 @@ class JackAnalyzer {
                     case KEYWORD:
                         pw.println("<keyword> " + jt.keyWord().toString().toLowerCase() + " </keyword>");
                         break;
+                    case SYMBOL:
+                        String symbol;
+                        switch (jt.symbol()) {
+                            case '<': symbol = "&lt;"; break;
+                            case '>': symbol = "&gt;"; break;
+                            case '\\': symbol = "&quot;"; break;
+                            case '&': symbol = "&amp;"; break;
+                            default: symbol = String.valueOf(jt.symbol()); break;
+                        }
+                        pw.println("<symbol> " + symbol + " </symbol>");
+                        break;
                     default: pw.println(jt.token);
                 }
             }

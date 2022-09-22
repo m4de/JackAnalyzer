@@ -156,4 +156,14 @@ class JackTokenizer {
         }
         return null;
     }
+
+    /**
+     * Returns the character which is the current token.
+     * Should be called only if {@link #tokenType() tokenType} is {@link TokenType#SYMBOL SYMBOL}.
+     *
+     * @return  the character which is the current token
+     */
+    char symbol() {
+        return token.charAt(0);
+    }
 }
