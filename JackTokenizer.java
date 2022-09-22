@@ -166,4 +166,14 @@ class JackTokenizer {
     char symbol() {
         return token.charAt(0);
     }
+
+    /**
+     * Returns the identifier which is the current token.
+     * Should be called only if {@link #tokenType() tokenType} is {@link TokenType#IDENTIFIER IDENTIFIER}.
+     *
+     * @return  the identifier which is the current token
+     */
+    String identifier() {
+        return token;
+    }
 }

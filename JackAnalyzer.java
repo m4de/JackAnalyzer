@@ -55,6 +55,9 @@ class JackAnalyzer {
                         }
                         pw.println("<symbol> " + symbol + " </symbol>");
                         break;
+                    case IDENTIFIER:
+                        pw.println("<identifier> " + jt.identifier() + " </identifier>");
+                        break;
                     default: pw.println(jt.token);
                 }
             }
