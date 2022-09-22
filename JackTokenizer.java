@@ -186,4 +186,14 @@ class JackTokenizer {
     int intVal() {
         return Integer.parseInt(token);
     }
+
+    /**
+     * Returns the string value of the current token, without the two enclosing double quotes.
+     * Should be called only if {@link #tokenType() tokenType} is {@link TokenType#STRING_CONST STRING_CONST}.
+     *
+     * @return  the string value of the current token, without the two enclosing double quotes
+     */
+    String stringVal() {
+        return token.substring(1, token.length() - 1);
+    }
 }
