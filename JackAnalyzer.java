@@ -59,6 +59,9 @@ class JackAnalyzer {
                     case IDENTIFIER:
                         pw.println("<identifier> " + jt.identifier() + " </identifier>");
                         break;
+                    case INT_CONST:
+                        pw.println("<integerConstant> " + jt.intVal() + " </integerConstant>");
+                        break;
                     default: pw.println(jt.token);
                 }
             }

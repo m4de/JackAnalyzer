@@ -176,4 +176,14 @@ class JackTokenizer {
     String identifier() {
         return token;
     }
+
+    /**
+     * Returns the integer value of the current token.
+     * Should be called only if {@link #tokenType() tokenType} is {@link TokenType#INT_CONST INT_CONST}.
+     *
+     * @return  the integer value of the current token
+     */
+    int intVal() {
+        return Integer.parseInt(token);
+    }
 }
