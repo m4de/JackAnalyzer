@@ -11,8 +11,8 @@ import java.util.regex.Pattern;
 class JackTokenizer {
 
     private final Scanner sc;
-    String token;
-    String nextToken = "";
+    private char nextChar;
+    private String token;
 
     private final String keyword = "class|constructor|function|method|field|static|var|int|char|boolean|void|true|false|null|this|let|do|if|else|while|return";
     private final String symbol = "\\{|}|\\(|\\)|\\[|]|\\.|,|;|\\+|-|\\*|/|&|\\||<|>|=|~";
@@ -28,7 +28,7 @@ class JackTokenizer {
      * @throws Exception
      */
     JackTokenizer(File file) throws Exception {
-        sc = new Scanner(file);
+        sc = new Scanner(file).useDelimiter("");
     }
 
     /**
@@ -46,66 +46,76 @@ class JackTokenizer {
      * Initially there is no current token.
      */
     void advance() {
-        if (!nextToken.isEmpty()) {
-            if (nextToken.startsWith("\"")) {
-                String buildToken = nextToken;
-                Pattern defDelimiter = sc.delimiter();
-                sc.useDelimiter("");
-                nextToken = sc.next();
-                while (!nextToken.equals("\"")) {
-                    buildToken = buildToken.concat(nextToken);
-                    nextToken = sc.next();
-                }
-                buildToken = buildToken.concat(nextToken);
-                this.token = buildToken;
-                sc.useDelimiter(defDelimiter);
-                this.nextToken = sc.next();
-            } else if (nextToken.startsWith("(") || nextToken.startsWith(")") || nextToken.startsWith("[") || nextToken.startsWith("]") || nextToken.startsWith(";") || nextToken.startsWith(",") || nextToken.startsWith(".")) {
-                this.token = nextToken.substring(0,1);
-                this.nextToken = nextToken.substring(1);
-            } else {
-                if (nextToken.contains("(")) {
-                    this.token = nextToken.substring(0, nextToken.indexOf("("));
-                    this.nextToken = nextToken.substring(nextToken.indexOf("("));
-                } else if (nextToken.contains(")")) {
-                    this.token = nextToken.substring(0, nextToken.indexOf(")"));
-                    this.nextToken = nextToken.substring(nextToken.indexOf(")"));
-                } else if (nextToken.contains("]")) {
-                    this.token = nextToken.substring(0, nextToken.indexOf("]"));
-                    this.nextToken = nextToken.substring(nextToken.indexOf("]"));
-                } else {
-                    this.token = nextToken;
-                    this.nextToken = "";
-                }
+        // prepare variables
+        token = "";
+        String potentialToken = "";
+
+        // previous token construction finished at a symbol, so make that the current token and stop
+         if (Pattern.matches(symbol, String.valueOf(nextChar))) {
+            token = String.valueOf(nextChar);
+            nextChar = 0;
+            return;
+        }
+
+        // take the next character from the input
+        nextChar = sc.next().charAt(0);
+
+        // the next character is a symbol, which is a token
+        if (nextChar == '(' || nextChar == ')' || nextChar == '[' || nextChar == ']' || nextChar == ',' || nextChar == ';' || nextChar == '.' || nextChar == '-') {
+            token = String.valueOf(nextChar);
+            nextChar = 0;
+            return;
+        }
+
+        // skip over any kind of whitespace
+        while (Character.isWhitespace(nextChar)) {
+            if (!sc.hasNext()) {
+                return;
             }
-        } else {
-            String token = sc.next();
-            while (token.equals("//") | token.equals("/**")) {
-                sc.nextLine();
-                token = sc.next();
+            nextChar = sc.next().charAt(0);
+        }
+
+        boolean stringConstant = false;
+
+        // build up a potential token
+        while (sc.hasNext() && (stringConstant || !Character.isWhitespace(nextChar))) {
+
+            if (nextChar == '"') {
+                stringConstant = !stringConstant;
             }
-            if (token.contains(".")) {
-                this.token = token.substring(0, token.indexOf("."));
-                this.nextToken = token.substring(token.indexOf("."));
-            } else if (token.contains("(")) {
-                this.token = token.substring(0, token.indexOf("("));
-                this.nextToken = token.substring(token.indexOf("("));
-            } else if (token.contains(")")) {
-                this.token = token.substring(0, token.indexOf(")"));
-                this.nextToken = token.substring(token.indexOf(")"));
-            } else if (token.contains("[")) {
-                this.token = token.substring(0, token.indexOf("["));
-                this.nextToken = token.substring(token.indexOf("["));
-            } else if (token.contains(";")) {
-                this.token = token.substring(0, token.indexOf(";"));
-                this.nextToken = token.substring(token.indexOf(";"));
-            } else if (token.contains(",")) {
-                this.token = token.substring(0, token.indexOf(","));
-                this.nextToken = token.substring(token.indexOf(","));
-            } else {
-                this.token = token;
+
+            if (nextChar == '-' || nextChar == '(' || nextChar == '~') {
+                token = String.valueOf(nextChar);
+                nextChar = 0;
+                return;
+            }
+
+            potentialToken += nextChar;
+            nextChar = sc.next().charAt(0);
+
+            if (!stringConstant && (nextChar == '(' || nextChar == ')' || nextChar == '[' || nextChar == ']' || nextChar == ',' || nextChar == ';' || nextChar == '.')) {
+                token = potentialToken;
+                return;
             }
         }
+
+        // ignore the token if it's a comment
+        if (potentialToken.startsWith("//") || potentialToken.startsWith("/**")) {
+            if (potentialToken.startsWith("//")) {
+                sc.nextLine();
+            } else if (potentialToken.startsWith("/**")) {
+                String nextLine = sc.nextLine();
+                while (!nextLine.contains("*/")) {
+                    nextLine = sc.nextLine();
+                }
+            }
+            if (sc.hasNext()) {
+                advance();
+                return;
+            }
+        }
+
+        token = potentialToken;
     }
 
     /**

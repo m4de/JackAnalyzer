@@ -38,34 +38,42 @@ class JackAnalyzer {
             JackTokenizer jt = new JackTokenizer(f);
             while (jt.hasMoreTokens()) {
                 jt.advance();
-                if (jt.token.isEmpty()) {
-                    jt.advance();
-                }
-                switch (jt.tokenType()) {
-                    case KEYWORD:
-                        pw.println("<keyword> " + jt.keyWord().toString().toLowerCase() + " </keyword>");
-                        break;
-                    case SYMBOL:
-                        String symbol;
-                        switch (jt.symbol()) {
-                            case '<': symbol = "&lt;"; break;
-                            case '>': symbol = "&gt;"; break;
-                            case '\\': symbol = "&quot;"; break;
-                            case '&': symbol = "&amp;"; break;
-                            default: symbol = String.valueOf(jt.symbol()); break;
-                        }
-                        pw.println("<symbol> " + symbol + " </symbol>");
-                        break;
-                    case IDENTIFIER:
-                        pw.println("<identifier> " + jt.identifier() + " </identifier>");
-                        break;
-                    case INT_CONST:
-                        pw.println("<integerConstant> " + jt.intVal() + " </integerConstant>");
-                        break;
-                    case STRING_CONST:
-                        pw.println("<stringConstant> " + jt.stringVal() + " </stringConstant>");
-                        break;
-                    default: pw.println(jt.token);
+                if (jt.tokenType() != null) {
+                    switch (jt.tokenType()) {
+                        case KEYWORD:
+                            pw.println("<keyword> " + jt.keyWord().toString().toLowerCase() + " </keyword>");
+                            break;
+                        case SYMBOL:
+                            String symbol;
+                            switch (jt.symbol()) {
+                                case '<':
+                                    symbol = "&lt;";
+                                    break;
+                                case '>':
+                                    symbol = "&gt;";
+                                    break;
+                                case '\\':
+                                    symbol = "&quot;";
+                                    break;
+                                case '&':
+                                    symbol = "&amp;";
+                                    break;
+                                default:
+                                    symbol = String.valueOf(jt.symbol());
+                                    break;
+                            }
+                            pw.println("<symbol> " + symbol + " </symbol>");
+                            break;
+                        case IDENTIFIER:
+                            pw.println("<identifier> " + jt.identifier() + " </identifier>");
+                            break;
+                        case INT_CONST:
+                            pw.println("<integerConstant> " + jt.intVal() + " </integerConstant>");
+                            break;
+                        case STRING_CONST:
+                            pw.println("<stringConstant> " + jt.stringVal() + " </stringConstant>");
+                            break;
+                    }
                 }
             }
             pw.println("</tokens>");
