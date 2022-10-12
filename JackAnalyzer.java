@@ -1,7 +1,5 @@
 import java.io.File;
-import java.io.FileWriter;
 import java.io.FilenameFilter;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -33,51 +31,8 @@ class JackAnalyzer {
         }
 
         for (File f : files) {
-            PrintWriter pw = new PrintWriter(new FileWriter(f.getAbsolutePath().replaceFirst("[.][^.]+$", "T.xml")));
-            pw.println("<tokens>");
-            JackTokenizer jt = new JackTokenizer(f);
-            while (jt.hasMoreTokens()) {
-                jt.advance();
-                if (jt.tokenType() != null) {
-                    switch (jt.tokenType()) {
-                        case KEYWORD:
-                            pw.println("<keyword> " + jt.keyWord().toString().toLowerCase() + " </keyword>");
-                            break;
-                        case SYMBOL:
-                            String symbol;
-                            switch (jt.symbol()) {
-                                case '<':
-                                    symbol = "&lt;";
-                                    break;
-                                case '>':
-                                    symbol = "&gt;";
-                                    break;
-                                case '\\':
-                                    symbol = "&quot;";
-                                    break;
-                                case '&':
-                                    symbol = "&amp;";
-                                    break;
-                                default:
-                                    symbol = String.valueOf(jt.symbol());
-                                    break;
-                            }
-                            pw.println("<symbol> " + symbol + " </symbol>");
-                            break;
-                        case IDENTIFIER:
-                            pw.println("<identifier> " + jt.identifier() + " </identifier>");
-                            break;
-                        case INT_CONST:
-                            pw.println("<integerConstant> " + jt.intVal() + " </integerConstant>");
-                            break;
-                        case STRING_CONST:
-                            pw.println("<stringConstant> " + jt.stringVal() + " </stringConstant>");
-                            break;
-                    }
-                }
-            }
-            pw.println("</tokens>");
-            pw.close();
+            CompilationEngine ce = new CompilationEngine(f, new File(f.getAbsolutePath().replaceFirst("[.][^.]+$", ".xml")));
+            ce.compileClass();
         }
     }
 }
