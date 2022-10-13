@@ -270,6 +270,20 @@ class CompilationEngine {
     private void compileExpression() {
         print("<expression>");
         compileTerm();
+        while (jt.tokenType() == TokenType.SYMBOL && (
+                jt.symbol() == '+' ||
+                        jt.symbol() == '-' ||
+                        jt.symbol() == '*' ||
+                        jt.symbol() == '/' ||
+                        jt.symbol() == '&' ||
+                        jt.symbol() == '|' ||
+                        jt.symbol() == '<' ||
+                        jt.symbol() == '>' ||
+                        jt.symbol() == '='
+        )) {
+            process();
+            compileTerm();
+        }
         print("</expression>");
     }
 
@@ -281,7 +295,7 @@ class CompilationEngine {
     private int compileExpressionList() {
         int numberOfExpressions = 0;
         print("<expressionList>");
-        while (jt.tokenType() != TokenType.SYMBOL && jt.symbol() != ')') {
+        while (jt.symbol() != ')') {
             compileExpression();
             numberOfExpressions++;
             while (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == ',') {
@@ -302,7 +316,51 @@ class CompilationEngine {
      */
     private void compileTerm() {
         print("<term>");
-        process();
+        switch (jt.tokenType()) {
+            case INT_CONST:
+            case STRING_CONST:
+                process();
+                break;
+            case KEYWORD:
+                switch (jt.keyWord()) {
+                    case TRUE:
+                    case FALSE:
+                    case NULL:
+                    case THIS:
+                        process();
+                        break;
+                }
+                break;
+            case IDENTIFIER:
+                process();
+                if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '[') {
+                    process("[");
+                    compileExpression();
+                    process("]");
+                }
+                if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
+                    process(".");
+                    process();
+                    process("(");
+                    compileExpressionList();
+                    process(")");
+                }
+                break;
+            case SYMBOL:
+                switch (jt.symbol()) {
+                    case '(':
+                        process("(");
+                        compileExpression();
+                        process(")");
+                        break;
+                    case '-':
+                    case '~':
+                        process();
+                        compileTerm();
+                        break;
+                }
+                break;
+        }
         print("</term>");
     }
 
@@ -343,7 +401,18 @@ class CompilationEngine {
                 pw.println(indentation + "<keyword> " + jt.keyWord().toString().toLowerCase() + " </keyword>");
                 break;
             case SYMBOL:
-                pw.println(indentation + "<symbol> " + jt.symbol() + " </symbol>");
+                switch (jt.symbol()) {
+                    case '<': pw.println(indentation + "<symbol> " + "&lt;" + " </symbol>"); break;
+                    case '>': pw.println(indentation + "<symbol> " + "&gt;" + " </symbol>"); break;
+                    case '&': pw.println(indentation + "<symbol> " + "&amp;" + " </symbol>"); break;
+                    default: pw.println(indentation + "<symbol> " + jt.symbol() + " </symbol>"); break;
+                }
+                break;
+            case INT_CONST:
+                pw.println(indentation + "<integerConstant> " + jt.intVal() + " </integerConstant>");
+                break;
+            case STRING_CONST:
+                pw.println(indentation + "<stringConstant> " + jt.stringVal() + " </stringConstant>");
                 break;
             case IDENTIFIER:
                 pw.println(indentation + "<identifier> " + jt.identifier() + " </identifier>");
