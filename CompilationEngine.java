@@ -18,6 +18,17 @@ class CompilationEngine {
     private final PrintWriter pw;
     private String indentation;
 
+    private final String integerConstant = "^(0|[1-9]\\d*)$";
+    private final String stringConstant = "\".*?\"";
+    private final String identifier = "[a-zA-Z_][a-zA-Z0-9_]*";
+    private final String className = identifier;
+    private final String type = "int|char|boolean|" + className;
+    private final String varName = identifier;
+    private final String subroutineName = identifier;
+    private final String op = "\\+|-|\\*|/|&|\\||<|>|=";
+    private final String unaryOp = "-|~";
+    private final String keywordConstant = "true|false|null|this";
+
     /**
      * Creates a new compilation engine with the given input and output.
      *
@@ -37,7 +48,7 @@ class CompilationEngine {
     void compileClass() {
         print("<class>");
         process("class");
-        process();
+        process(className);
         process("{");
         while (jt.tokenType() == TokenType.KEYWORD &&
                 (jt.keyWord() == Keyword.STATIC || jt.keyWord() == Keyword.FIELD)) {
@@ -57,12 +68,12 @@ class CompilationEngine {
      */
     private void compileClassVarDec() {
         print("<classVarDec>");
-        process();
-        process();
-        process();
+        process("static|field");
+        process(type);
+        process(varName);
         while (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == ',') {
             process(",");
-            process();
+            process(varName);
         }
         process(";");
         print("</classVarDec>");
@@ -73,30 +84,9 @@ class CompilationEngine {
      */
     private void compileSubroutine() {
         print("<subroutineDec>");
-        switch (jt.identifier()) {
-            case "constructor":
-            case "function":
-            case "method":
-                process();
-                break;
-        }
-        switch (jt.identifier()) {
-            case "void":
-                process();
-                break;
-            default:
-                switch (jt.identifier()) {
-                    case "int":
-                    case "char":
-                    case "boolean":
-                        process();
-                        break;
-                    default:
-                        process();
-                        break;
-                }
-        }
-        process();
+        process("constructor|function|method");
+        process("void|" + type);
+        process(subroutineName);
         process("(");
         compileParameterList();
         process(")");
@@ -110,19 +100,13 @@ class CompilationEngine {
     private void compileParameterList() {
         print("<parameterList>");
         if (jt.tokenType() == TokenType.KEYWORD && (jt.keyWord() == Keyword.INT || jt.keyWord() == Keyword.BOOLEAN)) {
-            process();
-        }
-        if (jt.tokenType() == TokenType.IDENTIFIER) {
-            process();
+            process(type);
+            process(varName);
         }
         while (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == ',') {
             process(",");
-            if (jt.tokenType() == TokenType.KEYWORD && (jt.keyWord() == Keyword.INT || jt.keyWord() == Keyword.BOOLEAN)) {
-                process();
-            }
-            if (jt.tokenType() == TokenType.IDENTIFIER) {
-                process();
-            }
+            process(type);
+            process(varName);
         }
         print("</parameterList>");
     }
@@ -147,11 +131,11 @@ class CompilationEngine {
     private void compileVarDec() {
         print("<varDec>");
         process("var");
-        process();
-        process();
+        process(type);
+        process(varName);
         while (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == ',') {
             process(",");
-            process();
+            process(varName);
         }
         process(";");
         print("</varDec>");
@@ -180,7 +164,7 @@ class CompilationEngine {
     private void compileLet() {
         print("<letStatement>");
         process("let");
-        process();
+        process(varName);
         if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '[') {
             process("[");
             compileExpression();
@@ -234,14 +218,10 @@ class CompilationEngine {
     private void compileDo() {
         print("<doStatement>");
         process("do");
-        if (jt.tokenType() == TokenType.IDENTIFIER) {
-            process();
-        }
+        process(identifier);
         if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
             process(".");
-        }
-        if (jt.tokenType() == TokenType.IDENTIFIER) {
-            process();
+            process(subroutineName);
         }
         process("(");
         compileExpressionList();
@@ -282,7 +262,7 @@ class CompilationEngine {
                         jt.symbol() == '>' ||
                         jt.symbol() == '='
         )) {
-            process();
+            process(op);
             compileTerm();
         }
         print("</expression>");
@@ -319,21 +299,16 @@ class CompilationEngine {
         print("<term>");
         switch (jt.tokenType()) {
             case INT_CONST:
+                process(integerConstant);
+                break;
             case STRING_CONST:
-                process();
+                process(stringConstant);
                 break;
             case KEYWORD:
-                switch (jt.keyWord()) {
-                    case TRUE:
-                    case FALSE:
-                    case NULL:
-                    case THIS:
-                        process();
-                        break;
-                }
+                process(keywordConstant);
                 break;
             case IDENTIFIER:
-                process();
+                process(varName);
                 if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '[') {
                     process("[");
                     compileExpression();
@@ -341,7 +316,7 @@ class CompilationEngine {
                 }
                 if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
                     process(".");
-                    process();
+                    process(subroutineName);
                     process("(");
                     compileExpressionList();
                     process(")");
@@ -356,18 +331,13 @@ class CompilationEngine {
                         break;
                     case '-':
                     case '~':
-                        process();
+                        process(unaryOp);
                         compileTerm();
                         break;
                 }
                 break;
         }
         print("</term>");
-    }
-
-    private void process() {
-        printXMLToken(jt.identifier());
-        if (jt.hasMoreTokens()) jt.advance();
     }
 
     /**
@@ -381,7 +351,7 @@ class CompilationEngine {
             case "(":
             case ")":
             case "[":
-                str = "\\" + str;
+                str = "\\".concat(str);
         }
         if (Pattern.matches(str, jt.identifier())) printXMLToken(str);
         if (jt.hasMoreTokens()) jt.advance();
