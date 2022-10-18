@@ -1,5 +1,6 @@
 import java.io.File;
 import java.io.PrintWriter;
+import java.util.regex.Pattern;
 
 /**
  * The compilation engine gets its input from a {@link JackTokenizer} and emits its output to an output file. The output
@@ -375,7 +376,14 @@ class CompilationEngine {
      * @param str
      */
     private void process(String str) {
-        if (jt.identifier().equals(str)) printXMLToken(str);
+        switch (str) {
+            case "{":
+            case "(":
+            case ")":
+            case "[":
+                str = "\\" + str;
+        }
+        if (Pattern.matches(str, jt.identifier())) printXMLToken(str);
         if (jt.hasMoreTokens()) jt.advance();
     }
 
