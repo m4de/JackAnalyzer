@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 class CompilationEngine {
 
     private final JackTokenizer jt;
+    private final SymbolTable cst, sst;
     private final PrintWriter pw;
     private String indentation;
 
@@ -22,7 +23,6 @@ class CompilationEngine {
     private final String stringConstant = "\".*?\"";
     private final String identifier = "[a-zA-Z_][a-zA-Z0-9_]*";
     private final String className = identifier;
-    private final String type = "int|char|boolean|" + className;
     private final String varName = identifier;
     private final String subroutineName = identifier;
     private final String op = "\\+|-|\\*|/|&|\\||<|>|=";
@@ -38,6 +38,8 @@ class CompilationEngine {
     CompilationEngine(File in, File out) throws Exception {
         jt = new JackTokenizer(in);
         pw = new PrintWriter(out);
+        cst = new SymbolTable();
+        sst = new SymbolTable();
         indentation = "";
         jt.advance();
     }
@@ -68,12 +70,15 @@ class CompilationEngine {
      */
     private void compileClassVarDec() {
         print("<classVarDec>");
-        process("static|field");
-        process(type);
-        process(varName);
+        String kind = process("static|field");
+        String type = jt.identifier();
+        jt.advance();
+        cst.define(jt.identifier(), type, Kind.valueOf(kind.toUpperCase()));
+        jt.advance();
         while (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == ',') {
             process(",");
-            process(varName);
+            cst.define(jt.identifier(), type, Kind.valueOf(kind.toUpperCase()));
+            jt.advance();
         }
         process(";");
         print("</classVarDec>");
@@ -83,9 +88,10 @@ class CompilationEngine {
      * Compiles a complete method, function, or constructor.
      */
     private void compileSubroutine() {
+        sst.reset();
         print("<subroutineDec>");
         process("constructor|function|method");
-        process("void|" + type);
+        process("void|int|char|boolean|" + className);
         process(subroutineName);
         process("(");
         compileParameterList();
@@ -100,13 +106,17 @@ class CompilationEngine {
     private void compileParameterList() {
         print("<parameterList>");
         if (jt.tokenType() == TokenType.KEYWORD && (jt.keyWord() == Keyword.INT || jt.keyWord() == Keyword.BOOLEAN)) {
-            process(type);
-            process(varName);
+            String type = jt.identifier();
+            jt.advance();
+            sst.define(jt.identifier(), type, Kind.ARG);
+            jt.advance();
         }
         while (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == ',') {
             process(",");
-            process(type);
-            process(varName);
+            String type = jt.identifier();
+            jt.advance();
+            sst.define(jt.identifier(), type, Kind.ARG);
+            jt.advance();
         }
         print("</parameterList>");
     }
@@ -131,11 +141,14 @@ class CompilationEngine {
     private void compileVarDec() {
         print("<varDec>");
         process("var");
-        process(type);
-        process(varName);
+        String type = jt.identifier();
+        jt.advance();
+        sst.define(jt.identifier(), type, Kind.VAR);
+        jt.advance();
         while (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == ',') {
             process(",");
-            process(varName);
+            sst.define(jt.identifier(), type, Kind.VAR);
+            jt.advance();
         }
         process(";");
         print("</varDec>");
@@ -345,7 +358,8 @@ class CompilationEngine {
      *
      * @param str
      */
-    private void process(String str) {
+    private String process(String str) {
+        String token = jt.identifier();
         switch (str) {
             case "{":
             case "(":
@@ -353,8 +367,9 @@ class CompilationEngine {
             case "[":
                 str = "\\".concat(str);
         }
-        if (Pattern.matches(str, jt.identifier())) printXMLToken(str);
+        if (Pattern.matches(str, token)) printXMLToken(str);
         if (jt.hasMoreTokens()) jt.advance();
+        return token;
     }
 
     /**
@@ -393,7 +408,25 @@ class CompilationEngine {
                 pw.println(indentation + "<stringConstant> " + jt.stringVal() + " </stringConstant>");
                 break;
             case IDENTIFIER:
-                pw.println(indentation + "<identifier> " + jt.identifier() + " </identifier>");
+                SymbolTable st = sst;
+                if (st.kindOf(jt.identifier()) == Kind.NONE) {
+                    st = cst;
+                }
+                print("<identifier>");
+                pw.println(indentation + "<name> " + jt.identifier() + " </name>");
+                switch (st.kindOf(jt.identifier())) {
+                    case FIELD:
+                    case STATIC:
+                    case VAR:
+                    case ARG:
+                        pw.println(indentation + "<category> " + st.kindOf(jt.identifier()).toString().toLowerCase() + " </category>");
+                        pw.println(indentation + "<index> " + st.indexOf(jt.identifier()) + " </index>");
+                        break;
+                    case NONE:
+                        pw.println(indentation + "<category> " + "class" + " </category>");
+                        break;
+                }
+                print("</identifier>");
                 break;
         }
     }
