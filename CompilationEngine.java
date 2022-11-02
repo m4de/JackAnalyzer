@@ -16,8 +16,6 @@ class CompilationEngine {
 
     private final JackTokenizer jt;
     private final SymbolTable cst, sst;
-    private final PrintWriter pw;
-    private String indentation;
 
     private final String integerConstant = "^(0|[1-9]\\d*)$";
     private final String stringConstant = "\".*?\"";
@@ -37,10 +35,8 @@ class CompilationEngine {
      */
     CompilationEngine(File in, File out) throws Exception {
         jt = new JackTokenizer(in);
-        pw = new PrintWriter(out);
         cst = new SymbolTable();
         sst = new SymbolTable();
-        indentation = "";
         jt.advance();
     }
 
@@ -48,7 +44,6 @@ class CompilationEngine {
      * Compiles a complete class.
      */
     void compileClass() {
-        print("<class>");
         process("class");
         process(className);
         process("{");
@@ -61,15 +56,12 @@ class CompilationEngine {
             compileSubroutine();
         }
         process("}");
-        print("</class>");
-        pw.close();
     }
 
     /**
      * Compiles a static variable declaration, or a field declaration.
      */
     private void compileClassVarDec() {
-        print("<classVarDec>");
         String kind = process("static|field");
         String type = jt.identifier();
         jt.advance();
@@ -81,7 +73,6 @@ class CompilationEngine {
             jt.advance();
         }
         process(";");
-        print("</classVarDec>");
     }
 
     /**
@@ -89,7 +80,6 @@ class CompilationEngine {
      */
     private void compileSubroutine() {
         sst.reset();
-        print("<subroutineDec>");
         process("constructor|function|method");
         process("void|int|char|boolean|" + className);
         process(subroutineName);
@@ -97,14 +87,12 @@ class CompilationEngine {
         compileParameterList();
         process(")");
         compileSubroutineBody();
-        print("</subroutineDec>");
     }
 
     /**
      * Compiles a (possibly empty) parameter list. Does not handle the enclosing parentheses tokens ( and ).
      */
     private void compileParameterList() {
-        print("<parameterList>");
         if (jt.tokenType() == TokenType.KEYWORD && (jt.keyWord() == Keyword.INT || jt.keyWord() == Keyword.BOOLEAN)) {
             String type = jt.identifier();
             jt.advance();
@@ -118,28 +106,24 @@ class CompilationEngine {
             sst.define(jt.identifier(), type, Kind.ARG);
             jt.advance();
         }
-        print("</parameterList>");
     }
 
     /**
      * Compiles a subroutine's body.
      */
     private void compileSubroutineBody() {
-        print("<subroutineBody>");
         process("{");
         while (jt.tokenType() == TokenType.KEYWORD && jt.keyWord() == Keyword.VAR) {
             compileVarDec();
         }
         compileStatements();
         process("}");
-        print("</subroutineBody>");
     }
 
     /**
      * Compiles a <code>var</code> declaration.
      */
     private void compileVarDec() {
-        print("<varDec>");
         process("var");
         String type = jt.identifier();
         jt.advance();
@@ -151,14 +135,12 @@ class CompilationEngine {
             jt.advance();
         }
         process(";");
-        print("</varDec>");
     }
 
     /**
      * Compiles a sequence of statements. Does not handle the enclosing curly bracket tokens { and }.
      */
     private void compileStatements() {
-        print("<statements>");
         while (jt.tokenType() == TokenType.KEYWORD && (jt.keyWord() == Keyword.LET || jt.keyWord() == Keyword.IF || jt.keyWord() == Keyword.WHILE || jt.keyWord() == Keyword.DO || jt.keyWord() == Keyword.RETURN)) {
             switch (jt.keyWord()) {
                 case LET: compileLet(); break;
@@ -168,14 +150,12 @@ class CompilationEngine {
                 case RETURN: compileReturn(); break;
             }
         }
-        print("</statements>");
     }
 
     /**
      * Compiles a <code>let</code> statement.
      */
     private void compileLet() {
-        print("<letStatement>");
         process("let");
         process(varName);
         if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '[') {
@@ -186,14 +166,12 @@ class CompilationEngine {
         process("=");
         compileExpression();
         process(";");
-        print("</letStatement>");
     }
 
     /**
      * Compiles an <code>if</code> statement, possibly with a trailing <code>else</code> clause.
      */
     private void compileIf() {
-        print("<ifStatement>");
         process("if");
         process("(");
         compileExpression();
@@ -207,14 +185,12 @@ class CompilationEngine {
             compileStatements();
             process("}");
         }
-        print("</ifStatement>");
     }
 
     /**
      * Compiles a <code>while</code> statement.
      */
     private void compileWhile() {
-        print("<whileStatement>");
         process("while");
         process("(");
         compileExpression();
@@ -222,14 +198,12 @@ class CompilationEngine {
         process("{");
         compileStatements();
         process("}");
-        print("</whileStatement>");
     }
 
     /**
      * Compiles a <code>do</code> statement.
      */
     private void compileDo() {
-        print("<doStatement>");
         process("do");
         process(identifier);
         if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
@@ -240,14 +214,12 @@ class CompilationEngine {
         compileExpressionList();
         process(")");
         process(";");
-        print("</doStatement>");
     }
 
     /**
      * Compiles a <code>return</code> statement.
      */
     private void compileReturn() {
-        print("<returnStatement>");
         process("return");
         if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == ';') {
             process(";");
@@ -255,14 +227,12 @@ class CompilationEngine {
             compileExpression();
             process(";");
         }
-        print("</returnStatement>");
     }
 
     /**
      * Compiles an expression.
      */
     private void compileExpression() {
-        print("<expression>");
         compileTerm();
         while (jt.tokenType() == TokenType.SYMBOL && (
                 jt.symbol() == '+' ||
@@ -278,7 +248,6 @@ class CompilationEngine {
             process(op);
             compileTerm();
         }
-        print("</expression>");
     }
 
     /**
@@ -288,7 +257,6 @@ class CompilationEngine {
      */
     private int compileExpressionList() {
         int numberOfExpressions = 0;
-        print("<expressionList>");
         while (jt.symbol() != ')') {
             compileExpression();
             numberOfExpressions++;
@@ -298,7 +266,6 @@ class CompilationEngine {
                 numberOfExpressions++;
             }
         }
-        print("</expressionList>");
         return numberOfExpressions;
     }
 
@@ -309,7 +276,6 @@ class CompilationEngine {
      * and should not be advanced over.
      */
     private void compileTerm() {
-        print("<term>");
         switch (jt.tokenType()) {
             case INT_CONST:
                 process(integerConstant);
@@ -350,7 +316,6 @@ class CompilationEngine {
                 }
                 break;
         }
-        print("</term>");
     }
 
     /**
@@ -367,67 +332,8 @@ class CompilationEngine {
             case "[":
                 str = "\\".concat(str);
         }
-        if (Pattern.matches(str, token)) printXMLToken(str);
+        if (Pattern.matches(str, token));
         if (jt.hasMoreTokens()) jt.advance();
         return token;
-    }
-
-    /**
-     * A helper routine that prints nonterminal language element tags, and handles indentation.
-     *
-     * @param str
-     */
-    private void print(String str) {
-        if (str.startsWith("</")) indentation = indentation.substring(0, indentation.length() - 2);
-        pw.println(indentation + str);
-        if (!str.startsWith("</")) indentation += "  ";
-    }
-
-    /**
-     * A helper routine that prints terminal language element (<i>token</i>) tags.
-     *
-     * @param str
-     */
-    private void printXMLToken(String str) {
-        switch (jt.tokenType()) {
-            case KEYWORD:
-                pw.println(indentation + "<keyword> " + jt.keyWord().toString().toLowerCase() + " </keyword>");
-                break;
-            case SYMBOL:
-                switch (jt.symbol()) {
-                    case '<': pw.println(indentation + "<symbol> " + "&lt;" + " </symbol>"); break;
-                    case '>': pw.println(indentation + "<symbol> " + "&gt;" + " </symbol>"); break;
-                    case '&': pw.println(indentation + "<symbol> " + "&amp;" + " </symbol>"); break;
-                    default: pw.println(indentation + "<symbol> " + jt.symbol() + " </symbol>"); break;
-                }
-                break;
-            case INT_CONST:
-                pw.println(indentation + "<integerConstant> " + jt.intVal() + " </integerConstant>");
-                break;
-            case STRING_CONST:
-                pw.println(indentation + "<stringConstant> " + jt.stringVal() + " </stringConstant>");
-                break;
-            case IDENTIFIER:
-                SymbolTable st = sst;
-                if (st.kindOf(jt.identifier()) == Kind.NONE) {
-                    st = cst;
-                }
-                print("<identifier>");
-                pw.println(indentation + "<name> " + jt.identifier() + " </name>");
-                switch (st.kindOf(jt.identifier())) {
-                    case FIELD:
-                    case STATIC:
-                    case VAR:
-                    case ARG:
-                        pw.println(indentation + "<category> " + st.kindOf(jt.identifier()).toString().toLowerCase() + " </category>");
-                        pw.println(indentation + "<index> " + st.indexOf(jt.identifier()) + " </index>");
-                        break;
-                    case NONE:
-                        pw.println(indentation + "<category> " + "class" + " </category>");
-                        break;
-                }
-                print("</identifier>");
-                break;
-        }
     }
 }
