@@ -16,6 +16,7 @@ class CompilationEngine {
 
     private final JackTokenizer jt;
     private final SymbolTable cst, sst;
+    private final VMWriter vmw;
 
     private final String integerConstant = "^(0|[1-9]\\d*)$";
     private final String stringConstant = "\".*?\"";
@@ -35,6 +36,7 @@ class CompilationEngine {
      */
     CompilationEngine(File in, File out) throws Exception {
         jt = new JackTokenizer(in);
+        vmw = new VMWriter(out);
         cst = new SymbolTable();
         sst = new SymbolTable();
         jt.advance();
@@ -56,6 +58,7 @@ class CompilationEngine {
             compileSubroutine();
         }
         process("}");
+        vmw.close();
     }
 
     /**

@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.PrintWriter;
 
 /**
  * This module features a set of simple routines for writing VM commands into the output file.
@@ -7,13 +8,15 @@ import java.io.File;
  */
 class VMWriter {
 
+    private final PrintWriter pw;
+
     /**
      * Creates a new output <code>.vm</code> file / stream, and prepares it for writing.
      *
      * @param out output file
      */
     VMWriter(File out) throws Exception {
-
+        pw = new PrintWriter(out);
     }
 
     /**
@@ -103,6 +106,6 @@ class VMWriter {
      * Closes the output file / stream.
      */
     void close() {
-
+        pw.close();
     }
 }
