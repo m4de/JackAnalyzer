@@ -26,7 +26,7 @@ class VMWriter {
      * @param index
      */
     void writePush(Segment segment, int index) {
-
+        pw.println("push " + segment.toString().toLowerCase() + " " + index);
     }
 
     /**
@@ -36,7 +36,7 @@ class VMWriter {
      * @param index
      */
     void writePop(Segment segment, int index) {
-
+        pw.println("pop " + segment.toString().toLowerCase() + " " + index);
     }
 
     /**
@@ -45,7 +45,7 @@ class VMWriter {
      * @param command
      */
     void writeArithmetic(Command command) {
-
+        pw.println(command.toString().toLowerCase());
     }
 
     /**
@@ -82,7 +82,7 @@ class VMWriter {
      * @param nVars
      */
     void writeCall(String name, int nVars) {
-
+        pw.println("call " + name + " " + nVars);
     }
 
     /**
@@ -92,14 +92,14 @@ class VMWriter {
      * @param nVars
      */
     void writeFunction(String name, int nVars) {
-
+        pw.println("function " + name + " " + nVars);
     }
 
     /**
      * Writes a VM <code>return</code> command.
      */
     void writeReturn() {
-
+        pw.println("return");
     }
 
     /**

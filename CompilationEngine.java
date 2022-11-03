@@ -1,5 +1,4 @@
 import java.io.File;
-import java.io.PrintWriter;
 import java.util.regex.Pattern;
 
 /**
@@ -18,15 +17,14 @@ class CompilationEngine {
     private final SymbolTable cst, sst;
     private final VMWriter vmw;
 
-    private final String integerConstant = "^(0|[1-9]\\d*)$";
     private final String stringConstant = "\".*?\"";
     private final String identifier = "[a-zA-Z_][a-zA-Z0-9_]*";
-    private final String className = identifier;
     private final String varName = identifier;
     private final String subroutineName = identifier;
-    private final String op = "\\+|-|\\*|/|&|\\||<|>|=";
     private final String unaryOp = "-|~";
     private final String keywordConstant = "true|false|null|this";
+
+    private String className;
 
     /**
      * Creates a new compilation engine with the given input and output.
@@ -47,7 +45,8 @@ class CompilationEngine {
      */
     void compileClass() {
         process("class");
-        process(className);
+        className = jt.identifier();
+        jt.advance();
         process("{");
         while (jt.tokenType() == TokenType.KEYWORD &&
                 (jt.keyWord() == Keyword.STATIC || jt.keyWord() == Keyword.FIELD)) {
@@ -84,8 +83,9 @@ class CompilationEngine {
     private void compileSubroutine() {
         sst.reset();
         process("constructor|function|method");
-        process("void|int|char|boolean|" + className);
-        process(subroutineName);
+        process("void|int|char|boolean|" + identifier);
+        String name = process(subroutineName);
+        vmw.writeFunction(className + "." + name, 0);
         process("(");
         compileParameterList();
         process(")");
@@ -208,15 +208,9 @@ class CompilationEngine {
      */
     private void compileDo() {
         process("do");
-        process(identifier);
-        if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
-            process(".");
-            process(subroutineName);
-        }
-        process("(");
-        compileExpressionList();
-        process(")");
+        compileExpression();
         process(";");
+        vmw.writePop(Segment.TEMP, 0);
     }
 
     /**
@@ -225,11 +219,12 @@ class CompilationEngine {
     private void compileReturn() {
         process("return");
         if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == ';') {
-            process(";");
+            vmw.writePush(Segment.CONSTANT, 0);
         } else {
             compileExpression();
-            process(";");
         }
+        process(";");
+        vmw.writeReturn();
     }
 
     /**
@@ -248,8 +243,17 @@ class CompilationEngine {
                         jt.symbol() == '>' ||
                         jt.symbol() == '='
         )) {
-            process(op);
+            char op = jt.symbol();
+            jt.advance();
             compileTerm();
+            switch (op) {
+                case '+':
+                    vmw.writeArithmetic(Command.ADD);
+                    break;
+                case '*':
+                    vmw.writeCall("Math.multiply", 2);
+                    break;
+            }
         }
     }
 
@@ -281,7 +285,8 @@ class CompilationEngine {
     private void compileTerm() {
         switch (jt.tokenType()) {
             case INT_CONST:
-                process(integerConstant);
+                vmw.writePush(Segment.CONSTANT, jt.intVal());
+                jt.advance();
                 break;
             case STRING_CONST:
                 process(stringConstant);
@@ -290,7 +295,8 @@ class CompilationEngine {
                 process(keywordConstant);
                 break;
             case IDENTIFIER:
-                process(varName);
+                String name = jt.identifier();
+                jt.advance();
                 if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '[') {
                     process("[");
                     compileExpression();
@@ -298,10 +304,11 @@ class CompilationEngine {
                 }
                 if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
                     process(".");
-                    process(subroutineName);
+                    name += "." + process(subroutineName);
                     process("(");
-                    compileExpressionList();
+                    int nVars = compileExpressionList();
                     process(")");
+                    vmw.writeCall(name, nVars);
                 }
                 break;
             case SYMBOL:
