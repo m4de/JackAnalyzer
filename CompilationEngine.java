@@ -18,13 +18,9 @@ class CompilationEngine {
     private final VMWriter vmw;
 
     private final String stringConstant = "\".*?\"";
-    private final String identifier = "[a-zA-Z_][a-zA-Z0-9_]*";
-    private final String varName = identifier;
-    private final String subroutineName = identifier;
-    private final String unaryOp = "-|~";
-    private final String keywordConstant = "true|false|null|this";
 
-    private String className;
+    private String className, subroutineName;
+    private int ifIndex, whileIndex;
 
     /**
      * Creates a new compilation engine with the given input and output.
@@ -82,10 +78,11 @@ class CompilationEngine {
      */
     private void compileSubroutine() {
         sst.reset();
+        ifIndex = whileIndex = 0;
         process("constructor|function|method");
-        process("void|int|char|boolean|" + identifier);
-        String name = process(subroutineName);
-        vmw.writeFunction(className + "." + name, 0);
+        process("void|int|char|boolean|[a-zA-Z_][a-zA-Z0-9_]*");
+        subroutineName = jt.identifier();
+        jt.advance();
         process("(");
         compileParameterList();
         process(")");
@@ -119,6 +116,7 @@ class CompilationEngine {
         while (jt.tokenType() == TokenType.KEYWORD && jt.keyWord() == Keyword.VAR) {
             compileVarDec();
         }
+        vmw.writeFunction(className + "." + subroutineName, sst.varCount(Kind.VAR));
         compileStatements();
         process("}");
     }
@@ -160,7 +158,8 @@ class CompilationEngine {
      */
     private void compileLet() {
         process("let");
-        process(varName);
+        String var = jt.identifier();
+        jt.advance();
         if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '[') {
             process("[");
             compileExpression();
@@ -169,24 +168,41 @@ class CompilationEngine {
         process("=");
         compileExpression();
         process(";");
+        switch (sst.kindOf(var)) {
+            case VAR:
+                vmw.writePop(Segment.LOCAL, sst.indexOf(var));
+                break;
+            case ARG:
+                vmw.writePop(Segment.ARGUMENT, sst.indexOf(var));
+                break;
+        }
     }
 
     /**
      * Compiles an <code>if</code> statement, possibly with a trailing <code>else</code> clause.
      */
     private void compileIf() {
+        int i = ifIndex++;
         process("if");
         process("(");
         compileExpression();
+        vmw.writeIf("IF_TRUE" + i);
+        vmw.writeGoto("IF_FALSE" + i);
+        vmw.writeLabel("IF_TRUE" + i);
         process(")");
         process("{");
         compileStatements();
         process("}");
         if (jt.tokenType() == TokenType.KEYWORD && jt.keyWord() == Keyword.ELSE) {
+            vmw.writeGoto("IF_END" + i);
+            vmw.writeLabel("IF_FALSE" + i);
             process("else");
             process("{");
             compileStatements();
             process("}");
+            vmw.writeLabel("IF_END" + i);
+        } else {
+            vmw.writeLabel("IF_FALSE" + i);
         }
     }
 
@@ -194,13 +210,20 @@ class CompilationEngine {
      * Compiles a <code>while</code> statement.
      */
     private void compileWhile() {
+        int i = whileIndex;
+        vmw.writeLabel("WHILE_EXP" + i);
         process("while");
         process("(");
         compileExpression();
         process(")");
+        vmw.writeArithmetic(Command.NOT);
+        vmw.writeIf("WHILE_END" + i);
         process("{");
+        whileIndex++;
         compileStatements();
+        vmw.writeGoto("WHILE_EXP" + i);
         process("}");
+        vmw.writeLabel("WHILE_END" + i);
     }
 
     /**
@@ -250,8 +273,20 @@ class CompilationEngine {
                 case '+':
                     vmw.writeArithmetic(Command.ADD);
                     break;
+                case '-':
+                    vmw.writeArithmetic(Command.SUB);
+                    break;
                 case '*':
                     vmw.writeCall("Math.multiply", 2);
+                    break;
+                case '>':
+                    vmw.writeArithmetic(Command.GT);
+                    break;
+                case '=':
+                    vmw.writeArithmetic(Command.EQ);
+                    break;
+                case '&':
+                    vmw.writeArithmetic(Command.AND);
                     break;
             }
         }
@@ -292,7 +327,17 @@ class CompilationEngine {
                 process(stringConstant);
                 break;
             case KEYWORD:
-                process(keywordConstant);
+                switch (jt.keyWord()) {
+                    case TRUE:
+                        vmw.writePush(Segment.CONSTANT, 0);
+                        vmw.writeArithmetic(Command.NOT);
+                        break;
+                    case FALSE:
+                    case NULL:
+                        vmw.writePush(Segment.CONSTANT, 0);
+                        break;
+                }
+                jt.advance();
                 break;
             case IDENTIFIER:
                 String name = jt.identifier();
@@ -301,14 +346,23 @@ class CompilationEngine {
                     process("[");
                     compileExpression();
                     process("]");
-                }
-                if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
+                } else if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
                     process(".");
-                    name += "." + process(subroutineName);
+                    name += "." + jt.identifier();
+                    jt.advance();
                     process("(");
                     int nVars = compileExpressionList();
                     process(")");
                     vmw.writeCall(name, nVars);
+                } else {
+                    switch (sst.kindOf(name)) {
+                        case ARG:
+                            vmw.writePush(Segment.ARGUMENT, sst.indexOf(name));
+                            break;
+                        case VAR:
+                            vmw.writePush(Segment.LOCAL, sst.indexOf(name));
+                            break;
+                    }
                 }
                 break;
             case SYMBOL:
@@ -320,8 +374,10 @@ class CompilationEngine {
                         break;
                     case '-':
                     case '~':
-                        process(unaryOp);
+                        char symbol = jt.symbol();
+                        jt.advance();
                         compileTerm();
+                        vmw.writeArithmetic(symbol == '-' ? Command.NEG : Command.NOT);
                         break;
                 }
                 break;

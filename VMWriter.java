@@ -54,7 +54,7 @@ class VMWriter {
      * @param label
      */
     void writeLabel(String label) {
-
+        pw.println("label " + label);
     }
 
     /**
@@ -63,7 +63,7 @@ class VMWriter {
      * @param label
      */
     void writeGoto(String label) {
-
+        pw.println("goto " + label);
     }
 
     /**
@@ -72,7 +72,7 @@ class VMWriter {
      * @param label
      */
     void writeIf(String label) {
-
+        pw.println("if-goto " + label);
     }
 
     /**
