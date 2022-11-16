@@ -19,7 +19,7 @@ class CompilationEngine {
 
     private final String stringConstant = "\".*?\"";
 
-    private String className, subroutineName;
+    private String className, subroutineName, subroutineType;
     private int ifIndex, whileIndex;
 
     /**
@@ -79,7 +79,7 @@ class CompilationEngine {
     private void compileSubroutine() {
         sst.reset();
         ifIndex = whileIndex = 0;
-        process("constructor|function|method");
+        subroutineType = process("constructor|function|method");
         process("void|int|char|boolean|[a-zA-Z_][a-zA-Z0-9_]*");
         subroutineName = jt.identifier();
         jt.advance();
@@ -117,6 +117,17 @@ class CompilationEngine {
             compileVarDec();
         }
         vmw.writeFunction(className + "." + subroutineName, sst.varCount(Kind.VAR));
+        switch (subroutineType) {
+            case "constructor":
+                vmw.writePush(Segment.CONSTANT, cst.varCount(Kind.FIELD));
+                vmw.writeCall("Memory.alloc", 1);
+                vmw.writePop(Segment.POINTER, 0);
+                break;
+            case "method":
+                vmw.writePush(Segment.ARGUMENT, 0);
+                vmw.writePop(Segment.POINTER, 0);
+                break;
+        }
         compileStatements();
         process("}");
     }
@@ -174,6 +185,12 @@ class CompilationEngine {
                 break;
             case ARG:
                 vmw.writePop(Segment.ARGUMENT, sst.indexOf(var));
+            case NONE:
+                switch (cst.kindOf(var)) {
+                    case FIELD:
+                        vmw.writePop(Segment.THIS, cst.indexOf(var));
+                        break;
+                }
                 break;
         }
     }
@@ -279,6 +296,9 @@ class CompilationEngine {
                 case '*':
                     vmw.writeCall("Math.multiply", 2);
                     break;
+                case '<':
+                    vmw.writeArithmetic(Command.LT);
+                    break;
                 case '>':
                     vmw.writeArithmetic(Command.GT);
                     break;
@@ -336,6 +356,9 @@ class CompilationEngine {
                     case NULL:
                         vmw.writePush(Segment.CONSTANT, 0);
                         break;
+                    case THIS:
+                        vmw.writePush(Segment.POINTER, 0);
+                        break;
                 }
                 jt.advance();
                 break;
@@ -347,13 +370,29 @@ class CompilationEngine {
                     compileExpression();
                     process("]");
                 } else if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
+                    int nVars = 0;
+                    if (sst.kindOf(name) != Kind.NONE) {
+                        name = sst.typeOf(name);
+                        vmw.writePush(Segment.LOCAL, 0);
+                        nVars++;
+                    } else if (cst.kindOf(name) != Kind.NONE) {
+                        name = cst.typeOf(name);
+                        vmw.writePush(Segment.THIS, 0);
+                        nVars++;
+                    }
                     process(".");
                     name += "." + jt.identifier();
                     jt.advance();
                     process("(");
-                    int nVars = compileExpressionList();
+                    nVars = nVars + compileExpressionList();
                     process(")");
                     vmw.writeCall(name, nVars);
+                } else if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '(') {
+                    vmw.writePush(Segment.POINTER, 0);
+                    process("(");
+                    int nVars = compileExpressionList();
+                    process(")");
+                    vmw.writeCall(className + "." + name, 1 + nVars);
                 } else {
                     switch (sst.kindOf(name)) {
                         case ARG:
@@ -361,6 +400,13 @@ class CompilationEngine {
                             break;
                         case VAR:
                             vmw.writePush(Segment.LOCAL, sst.indexOf(name));
+                            break;
+                        case NONE:
+                            switch (cst.kindOf(name)) {
+                                case FIELD:
+                                    vmw.writePush(Segment.THIS, cst.indexOf(name));
+                                    break;
+                            }
                             break;
                     }
                 }
