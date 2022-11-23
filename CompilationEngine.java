@@ -17,8 +17,6 @@ class CompilationEngine {
     private final SymbolTable cst, sst;
     private final VMWriter vmw;
 
-    private final String stringConstant = "\".*?\"";
-
     private String className, subroutineName, subroutineType;
     private int ifIndex, whileIndex;
 
@@ -175,24 +173,33 @@ class CompilationEngine {
             process("[");
             compileExpression();
             process("]");
+            vmw.writePush(Segment.LOCAL, sst.indexOf(var));
+            vmw.writeArithmetic(Command.ADD);
+            process("=");
+            compileExpression();
+            vmw.writePop(Segment.TEMP, 0);
+            vmw.writePop(Segment.POINTER,1);
+            vmw.writePush(Segment.TEMP, 0);
+            vmw.writePop(Segment.THAT, 0);
+        } else {
+            process("=");
+            compileExpression();
+            switch (sst.kindOf(var)) {
+                case VAR:
+                    vmw.writePop(Segment.LOCAL, sst.indexOf(var));
+                    break;
+                case ARG:
+                    vmw.writePop(Segment.ARGUMENT, sst.indexOf(var));
+                case NONE:
+                    switch (cst.kindOf(var)) {
+                        case FIELD:
+                            vmw.writePop(Segment.THIS, cst.indexOf(var));
+                            break;
+                    }
+                    break;
+            }
         }
-        process("=");
-        compileExpression();
         process(";");
-        switch (sst.kindOf(var)) {
-            case VAR:
-                vmw.writePop(Segment.LOCAL, sst.indexOf(var));
-                break;
-            case ARG:
-                vmw.writePop(Segment.ARGUMENT, sst.indexOf(var));
-            case NONE:
-                switch (cst.kindOf(var)) {
-                    case FIELD:
-                        vmw.writePop(Segment.THIS, cst.indexOf(var));
-                        break;
-                }
-                break;
-        }
     }
 
     /**
@@ -296,6 +303,9 @@ class CompilationEngine {
                 case '*':
                     vmw.writeCall("Math.multiply", 2);
                     break;
+                case '/':
+                    vmw.writeCall("Math.divide", 2);
+                    break;
                 case '<':
                     vmw.writeArithmetic(Command.LT);
                     break;
@@ -344,7 +354,13 @@ class CompilationEngine {
                 jt.advance();
                 break;
             case STRING_CONST:
-                process(stringConstant);
+                vmw.writePush(Segment.CONSTANT, jt.stringVal().length());
+                vmw.writeCall("String.new", 1);
+                for (int i = 0; i < jt.stringVal().length(); i++) {
+                    vmw.writePush(Segment.CONSTANT, jt.stringVal().charAt(i));
+                    vmw.writeCall("String.appendChar", 2);
+                }
+                jt.advance();
                 break;
             case KEYWORD:
                 switch (jt.keyWord()) {
@@ -369,6 +385,10 @@ class CompilationEngine {
                     process("[");
                     compileExpression();
                     process("]");
+                    vmw.writePush(Segment.LOCAL, sst.indexOf(name));
+                    vmw.writeArithmetic(Command.ADD);
+                    vmw.writePop(Segment.POINTER, 1);
+                    vmw.writePush(Segment.THAT, 0);
                 } else if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
                     int nVars = 0;
                     if (sst.kindOf(name) != Kind.NONE) {
