@@ -78,6 +78,9 @@ class CompilationEngine {
         sst.reset();
         ifIndex = whileIndex = 0;
         subroutineType = process("constructor|function|method");
+        if (Pattern.matches("method", subroutineType)) {
+            sst.define("this", className, Kind.ARG);
+        }
         process("void|int|char|boolean|[a-zA-Z_][a-zA-Z0-9_]*");
         subroutineName = jt.identifier();
         jt.advance();
@@ -194,6 +197,9 @@ class CompilationEngine {
                     switch (cst.kindOf(var)) {
                         case FIELD:
                             vmw.writePop(Segment.THIS, cst.indexOf(var));
+                            break;
+                        case STATIC:
+                            vmw.writePop(Segment.STATIC, cst.indexOf(var));
                             break;
                     }
                     break;
@@ -318,6 +324,9 @@ class CompilationEngine {
                 case '&':
                     vmw.writeArithmetic(Command.AND);
                     break;
+                case '|':
+                    vmw.writeArithmetic(Command.OR);
+                    break;
             }
         }
     }
@@ -390,18 +399,23 @@ class CompilationEngine {
                     vmw.writePop(Segment.POINTER, 1);
                     vmw.writePush(Segment.THAT, 0);
                 } else if (jt.tokenType() == TokenType.SYMBOL && jt.symbol() == '.') {
+                    String type;
                     int nVars = 0;
                     if (sst.kindOf(name) != Kind.NONE) {
-                        name = sst.typeOf(name);
-                        vmw.writePush(Segment.LOCAL, 0);
+                        type = sst.typeOf(name);
+                        vmw.writePush(Segment.LOCAL, sst.indexOf(name));
                         nVars++;
                     } else if (cst.kindOf(name) != Kind.NONE) {
-                        name = cst.typeOf(name);
-                        vmw.writePush(Segment.THIS, 0);
+                        type = cst.typeOf(name);
+                        vmw.writePush(Segment.THIS, cst.indexOf(name));
                         nVars++;
+                    } else if (Character.isUpperCase(name.charAt(0))) {
+                        type = name;
+                    } else {
+                        type = className;
                     }
                     process(".");
-                    name += "." + jt.identifier();
+                    name = type + "." + jt.identifier();
                     jt.advance();
                     process("(");
                     nVars = nVars + compileExpressionList();
@@ -425,6 +439,9 @@ class CompilationEngine {
                             switch (cst.kindOf(name)) {
                                 case FIELD:
                                     vmw.writePush(Segment.THIS, cst.indexOf(name));
+                                    break;
+                                case STATIC:
+                                    vmw.writePush(Segment.STATIC, cst.indexOf(name));
                                     break;
                             }
                             break;
