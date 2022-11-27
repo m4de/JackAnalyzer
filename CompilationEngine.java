@@ -94,7 +94,7 @@ class CompilationEngine {
      * Compiles a (possibly empty) parameter list. Does not handle the enclosing parentheses tokens ( and ).
      */
     private void compileParameterList() {
-        if (jt.tokenType() == TokenType.KEYWORD && (jt.keyWord() == Keyword.INT || jt.keyWord() == Keyword.BOOLEAN)) {
+        if ((jt.tokenType() == TokenType.KEYWORD && (jt.keyWord() == Keyword.INT || jt.keyWord() == Keyword.BOOLEAN)) || (jt.tokenType() == TokenType.IDENTIFIER)) {
             String type = jt.identifier();
             jt.advance();
             sst.define(jt.identifier(), type, Kind.ARG);
@@ -176,7 +176,14 @@ class CompilationEngine {
             process("[");
             compileExpression();
             process("]");
-            vmw.writePush(Segment.LOCAL, sst.indexOf(var));
+            switch (sst.kindOf(var)) {
+                case ARG:
+                    vmw.writePush(Segment.ARGUMENT, sst.indexOf(var));
+                    break;
+                case VAR:
+                    vmw.writePush(Segment.LOCAL, sst.indexOf(var));
+                    break;
+            }
             vmw.writeArithmetic(Command.ADD);
             process("=");
             compileExpression();
